@@ -8,7 +8,7 @@ Tener instalado:
 ## Instrucciones
 1. Crea un ambiente e instala las dependencias adecuadas corriendo los siguientes comandos
 ```
-conda create -n mlenv python=3.10
+conda create -n mlenv python=3.11
 conda activate mlenv
 pip install -e .
 ```
