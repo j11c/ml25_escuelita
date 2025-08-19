@@ -37,7 +37,7 @@ class QLearningAgent(RandomAgent):
     def step(self, state, action, reward, next_state):
         best_next_action = np.argmax(self.Q[next_state])
         # TODO: Implementa la actualización de Q-learning usando la ecuación vista en clase
-        self.Q[state][action] = self.Q[state][action] + ( self.alpha * (self.gamma) )
+        self.Q[state][action] += self.alpha * ( (reward + (self.gamma * self.Q[next_state][best_next_action])) - self.Q[state][action] )
 
 
 if __name__ == "__main__":
@@ -48,18 +48,37 @@ if __name__ == "__main__":
     # 3. ejecuta el script para ver el comportamiento del agente
     # 4. Implementa una técnica para reducir la exploración conforme el agente aprende
     # https://gymnasium.farama.org/environments/toy_text/cliff_walking/
-    env = gym.make("CliffWalking-v1", render_mode="human")
+
+    # env = gym.make("CliffWalking-v1", render_mode="human")
+    env = gym.make("CliffWalking-v1")
 
     n_episodes = 1000
     episode_length = 200
-    agent = RandomAgent(env, alpha=0.1, gamma=0.9, epsilon=0.9)
+    # agent = RandomAgent(env, alpha=0.1, gamma=0.9, epsilon=0.9)
+    agent = QLearningAgent(env, alpha=0.1, gamma=0.9, epsilon=1)
+
     for e in range(n_episodes):
+
+        # renderizar solo cada 100 episodios para evitar retrazos en el aprendizaje
+        if e % 100 == 0:
+            env.close()
+            env = gym.make("CliffWalking-v1", render_mode="human")
+            agent.env = env
+            print(f"--- Rendering episode {e} ---")
+        elif e % 100 == 1:
+            env.close()
+            env = gym.make("CliffWalking-v1")
+            agent.env = env
+
         obs, _ = env.reset()
         ep_return = 0
+
         for i in range(episode_length):
+
             # take a random action
             action = agent.act(obs)
             next_obs, reward, done, _, _ = env.step(action)
+
             # update agent
             agent.step(obs, action, reward, next_obs)
 
@@ -67,10 +86,12 @@ if __name__ == "__main__":
                 break
             ep_return += reward
             obs = next_obs
-            print(agent.Q)
+            #print(agent.Q)
             env.render()
         # TODO: Implementa algun código para reducir la exploración del agente conforme aprende
         # puedes decidir hacerlo por episodio, por paso del tiempo, retorno promedio, etc.
+        agent.epsilon = max(0.01, agent.epsilon * 0.995)
 
-        print(f"Episode {e} return: ", ep_return)
+        print(f"Episode {e} return: {ep_return}, epsilon: {agent.epsilon:.3f}")
+        # print(f"Q Values: \n{agent.Q}")
     env.close()
