@@ -57,18 +57,27 @@ if __name__ == "__main__":
     # agent = RandomAgent(env, alpha=0.1, gamma=0.9, epsilon=0.9)
     agent = QLearningAgent(env, alpha=0.1, gamma=0.9, epsilon=1)
 
+
+    ##############################################
+    # Choose to skip first episode renderization #
+    skip_first_episode_renderization = True      #
+    ##############################################
+
+
     for e in range(n_episodes):
 
         # renderizar solo cada 100 episodios para evitar retrazos en el aprendizaje
-        if e % 100 == 0:
+        if e % 100 == 0 and (not skip_first_episode_renderization):
             env.close()
             env = gym.make("CliffWalking-v1", render_mode="human")
             agent.env = env
             print(f"--- Rendering episode {e} ---")
+            print(f"Q Table: \n{agent.Q} \n\n")
         elif e % 100 == 1:
             env.close()
             env = gym.make("CliffWalking-v1")
             agent.env = env
+            skip_first_episode_renderization = False
 
         obs, _ = env.reset()
         ep_return = 0
@@ -95,3 +104,6 @@ if __name__ == "__main__":
         print(f"Episode {e} return: {ep_return}, epsilon: {agent.epsilon:.3f}")
         # print(f"Q Values: \n{agent.Q}")
     env.close()
+
+    # Print final Q Table
+    print(f"Q Table: \n{agent.Q}")
