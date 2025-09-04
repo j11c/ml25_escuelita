@@ -210,7 +210,5 @@ __marimo__/
 
 #
 /.vscode
-*.csv
 *.pth
 */models/*.pt
-*/data/
