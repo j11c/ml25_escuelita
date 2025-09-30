@@ -6,6 +6,7 @@ Tener instalado:
 - [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 
 ## Instrucciones
+### Instalación con anaconda
 1. Crea un ambiente e instala las dependencias adecuadas corriendo los siguientes comandos
 ```
 conda create -n mlenv python=3.11
@@ -24,6 +25,35 @@ git clone [http link]
 
 ```
 git remote set-url upstream https://github.com/JessicaBorja/ml25.git
+```
+
+### Instalación con uv
+1. Instalar uv
+**MacOS and Linux**
+```
+curl -LsSf https://astral.sh/uv/install.sh | less
+```
+
+**Windows**
+```
+powershell -c "irm https://astral.sh/uv/install.ps1 | more"
+```
+
+2. Installar dependencias y crear ambiente
+Tanto para instalar como para actualizar solo se corre el comando
+```
+uv sync
+```
+
+3. Activar ambiente
+**MacOS and Linux**
+```
+source venv/bin/activate
+```
+
+**Windows**
+```
+.venv\Scripts\activate
 ```
 
 ## Actualizar tu repositorio
