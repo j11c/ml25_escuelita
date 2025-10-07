@@ -2,6 +2,7 @@ import pandas as pd
 import os
 from pathlib import Path
 from datetime import datetime
+from sklearn.feature_extraction.text import CountVectorizer
 
 DATA_COLLECTED_AT = datetime(2025, 9, 21).date()
 CURRENT_FILE = Path(__file__).resolve()
@@ -22,72 +23,141 @@ def save_df(df, filename: str):
     print(f"df saved to {save_path}")
 
 
+# Helper function extract_customer_features
+def get_season(month):
+    if month in [12, 1, 2]:
+        return 'winter'
+    elif month in [3, 4, 5]:
+        return 'spring'
+    elif month in [6, 7, 8]:
+        return 'summer'
+    else:
+        return 'autumn'
+    
+
 def extract_customer_features(train_df):
     # Consideren: que atributos del cliente siguen disponibles en prueba?
 
     """
     Extrae features agregadas por cliente para usar en el modelo.
-    Devuelve un DataFrame con una fila por cliente.
+    Devuelve un DataFrame con una fila por cliente, indicando su perfil.
     """
     data = train_df.copy()
-
-    # ----------------------
-    # Aseguramos tipo datetime
-    # ----------------------
+    data["customer_signup_date"] = pd.to_datetime(data["customer_signup_date"])
     data["customer_date_of_birth"] = pd.to_datetime(data["customer_date_of_birth"], errors="coerce")
-    data["customer_signup_date"] = pd.to_datetime(data["customer_signup_date"], errors="coerce")
+    data["purchase_timestamp"] = pd.to_datetime(data["purchase_timestamp"])
 
-    # ----------------------
-    # 1. Edad y antigüedad
-    # ----------------------
-    customer_feat = pd.DataFrame()
-    customer_feat["customer_id"] = data["customer_id"].unique()
+    #data = data.sort_values(["customer_id", "purchase_timestamp"])
 
-    # Edad
+    # Base: un cliente por fila
+    customer_feat = data[["customer_id"]].drop_duplicates().reset_index(drop=True)
+
+    # Edad (años)
     first_birth = data.groupby("customer_id")["customer_date_of_birth"].first()
-    customer_feat = customer_feat.merge(
-        (DATA_COLLECTED_AT - first_birth).dt.days / 365.25,
-        left_on="customer_id",
-        right_index=True,
-        how="left"
-    )
-    customer_feat.rename(columns={"customer_date_of_birth": "age"}, inplace=True)
+    age = (pd.Timestamp(DATA_COLLECTED_AT) - first_birth).dt.days / 365.25
+    customer_feat = customer_feat.merge(age.rename("age"), left_on="customer_id", right_index=True, how="left")
 
-    # Antigüedad
-    first_signup = data.groupby("customer_id")["customer_signup_date"].first()
-    customer_feat = customer_feat.merge(
-        (DATA_COLLECTED_AT - first_signup).dt.days / 365.25,
-        left_on="customer_id",
-        right_index=True,
-        how="left"
-    )
-    customer_feat.rename(columns={"customer_signup_date": "tenure"}, inplace=True)
+    # Antigüedad (años desde registro)
+    signup_date = data.groupby("customer_id")["customer_signup_date"].first()
+    seniority = (pd.Timestamp(DATA_COLLECTED_AT) - signup_date).dt.days / 365.25
+    customer_feat = customer_feat.merge(seniority.rename("customer_seniority"), left_on="customer_id", right_index=True, how="left")
 
-    # ----------------------
-    # 2. Estadísticas de compras
-    # ----------------------
+    # Estadísticas de precios
     stats = data.groupby("customer_id")["item_price"].agg(
         avg_purchase_cost="mean",
         var_purchase_cost="var",
+        std_purchase_cost="std",
         num_purchases="count"
     )
     customer_feat = customer_feat.merge(stats, left_on="customer_id", right_index=True, how="left")
 
-    # ----------------------
-    # 3. Porcentaje de compras por categoría
-    # ----------------------
-    cat_counts = data.groupby(["customer_id", "item_category"]).size().unstack(fill_value=0)
-    cat_pct = cat_counts.div(cat_counts.sum(axis=1), axis=0).add_prefix("pct_cat_")
-    customer_feat = customer_feat.merge(cat_pct, left_on="customer_id", right_index=True, how="left")
+    # Porcentaje de compras por categoría
+    cat_counts = (
+        data.groupby(["customer_id", "item_category"]).size().unstack(fill_value=0)
+    )
+    cat_percent = cat_counts.div(cat_counts.sum(axis=1), axis=0)
+    cat_percent.columns = [f"cat_pct_{c}" for c in cat_percent.columns]
+    customer_feat = customer_feat.merge(cat_percent, left_on="customer_id", right_index=True, how="left")
 
-    # ----------------------
-    # 4. One-hot del género
-    # ----------------------
-    gender = pd.get_dummies(data.set_index("customer_id")["customer_gender"], prefix="gender")
-    gender = gender.groupby(level=0).max()  # Si hay varias filas por cliente, quedamos con 1/0
-    customer_feat = customer_feat.merge(gender, left_on="customer_id", right_index=True, how="left")
+    # Porcentaje de compras por color (a partir de filename tipo imgbl, imgrd...)
+    data["item_color"] = data["item_img_filename"].str.extract(r"img([a-zA-Z]+)")[0]
+    color_counts = (
+        data.groupby(["customer_id", "item_color"]).size().unstack(fill_value=0)
+    )
+    color_percent = color_counts.div(color_counts.sum(axis=1), axis=0)
+    color_percent.columns = [f"color_pct_{c}" for c in color_percent.columns]
+    customer_feat = customer_feat.merge(color_percent, left_on="customer_id", right_index=True, how="left")
 
+    # Obtener estacion del año por compras
+    data['season'] = data['purchase_timestamp'].dt.month.apply(get_season)
+
+    # Calcular porcentaje de compras por estación
+    season_stats = (
+        data.groupby(['customer_id', 'season'])
+        .size()
+        .unstack(fill_value=0)
+    )
+    # Convertir a porcentaje
+    season_stats = season_stats.div(season_stats.sum(axis=1), axis=0).reset_index()
+    customer_feat = customer_feat.merge(season_stats, on='customer_id', how='left')
+
+    # Filtrar compras con fecha antes del corte (dataset tiene errores con compras futuras)
+    data_time_filtered = data[data["purchase_timestamp"] <= pd.Timestamp(DATA_COLLECTED_AT)]
+
+    # Promedio de días entre compras (solo dentro del rango válido)
+    avg_days_between = (
+        data_time_filtered
+        .sort_values(["customer_id", "purchase_timestamp"])
+        .groupby("customer_id")["purchase_timestamp"]
+        .diff()
+        .dt.days
+        .groupby(data_time_filtered["customer_id"])
+        .mean()
+    )
+
+    # Días desde la última compra hasta la fecha de corte
+    last_purchase = data_time_filtered.groupby("customer_id")["purchase_timestamp"].max()
+    days_since_last = (pd.Timestamp(DATA_COLLECTED_AT) - last_purchase).dt.days
+
+    # Merge
+    temporal_features = pd.DataFrame({
+        "avg_days_between_purchases": avg_days_between,
+        "days_since_last_purchase": days_since_last
+    }).reset_index(names="customer_id")
+    customer_feat = customer_feat.merge(temporal_features, on="customer_id", how="left")
+
+    #---------------------------
+    # Adjective tendencies
+    #---------------------------
+    adjective_vocab = [
+        "exclusive",
+        "casual",
+        "stylish",
+        "elegant",
+        "durable",
+        "classic",
+        "lightweight",
+        "modern",
+        "premium"
+    ]
+    # Concatenar todos los titles por cliente
+    titles_by_customer = data.groupby('customer_id')['item_title'].apply(lambda x: ' '.join(x))
+    # Vectorizar solo con nuestro vocabulario
+    vectorizer = CountVectorizer(vocabulary=adjective_vocab)
+    X_titles = vectorizer.fit_transform(titles_by_customer)
+    # Convertir a DataFrame con porcentaje
+    titles_df = pd.DataFrame(X_titles.toarray(), 
+                            columns=vectorizer.get_feature_names_out(), 
+                            index=titles_by_customer.index)
+    # Pasar a porcentaje por cliente
+    titles_df = titles_df.div(titles_df.sum(axis=1).replace(0, 1), axis=0).reset_index().rename(columns={'customer_id':'customer_id'})
+
+    # Merge al perfil del cliente
+    customer_feat = customer_feat.merge(titles_df, on='customer_id', how='left')
+
+    # Guardar
     save_df(customer_feat, "customer_features.csv")
+    return customer_feat
 
 
 def process_df(df, training=True):
