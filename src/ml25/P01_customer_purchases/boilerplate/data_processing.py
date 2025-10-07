@@ -3,10 +3,26 @@ import os
 from pathlib import Path
 from datetime import datetime
 from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler, MinMaxScaler
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+import joblib
 
 DATA_COLLECTED_AT = datetime(2025, 9, 21).date()
 CURRENT_FILE = Path(__file__).resolve()
 DATA_DIR = CURRENT_FILE / "../../../datasets/customer_purchases/"
+
+adjective_vocab = [
+    "exclusive",
+    "casual",
+    "stylish",
+    "elegant",
+    "durable",
+    "classic",
+    "lightweight",
+    "modern",
+    "premium"
+]
 
 
 def read_csv(filename: str):
@@ -129,17 +145,6 @@ def extract_customer_features(train_df):
     #---------------------------
     # Adjective tendencies
     #---------------------------
-    adjective_vocab = [
-        "exclusive",
-        "casual",
-        "stylish",
-        "elegant",
-        "durable",
-        "classic",
-        "lightweight",
-        "modern",
-        "premium"
-    ]
     # Concatenar todos los titles por cliente
     titles_by_customer = data.groupby('customer_id')['item_title'].apply(lambda x: ' '.join(x))
     # Vectorizar solo con nuestro vocabulario
@@ -199,81 +204,62 @@ def process_df(df, training=True):
     #     preprocessor = joblib.load(savepath)
     #     processed_array = preprocessor.transform(df)
 
-    columns_to_process = [
+    categorical_cols = [
         'customer_gender',
-        'item_title',
         'item_category',
-        'item_price',
-        'item_img_filename',
+        'item_img_filename'
+    ]
+
+    minmax_cols = [
         'age',
-        'customer_seniority',
-        'avg_purchase_cost',
-        'std_purchase_cost',
-        'cat_pct_blouse',
-        'cat_pct_dress',
-        'cat_pct_jacket',
-        'cat_pct_jeans',
-        'cat_pct_shirt',
-        'cat_pct_shoes',
-        'cat_pct_skirt',
-        'cat_pct_slacks',
-        'cat_pct_suit',
-        'cat_pct_t-shirt',
-        'color_pct_b',
-        'color_pct_bl',
-        'color_pct_g',
-        'color_pct_o',
-        'color_pct_p',
-        'color_pct_r',
-        'color_pct_w',
-        'color_pct_y',
-        'autumn',
-        'spring',
-        'summer',
-        'winter',
+        'customer_seniority'
+    ]
+
+    standard_cols = [
         'avg_days_between_purchases',
         'days_since_last_purchase',
-        'exclusive',
-        'casual',
-        'stylish',
-        'elegant',
-        'durable',
-        'classic',
-        'lightweight',
-        'modern',
-        'premium',
-        'item_release_date'
+        'item_price',
+        'avg_purchase_cost',
+        'std_purchase_cost'
     ]
 
-    categorical_cols = [
-        'customer_gender', # one hot encode
-        'item_category', # one hot encode
-        'item_img_filename' 
-    ] 
-
-    numeric_cols = [
-        'age', # normalize between max and min of all customers? 0 to 1 because no circular proximity
-        'customer_seniority', # normalize between max and min of all customers: 0 to 1 because no circular proximity
-        'avg_purchase_cost', 
-        'std_purchase_cost', 
-        'avg_days_between_purchases', 
-        'days_since_last_purchase',
-        'item_price'
+    text_cols = [
+        'item_title'
     ]
 
-    text_columns = [
-        'item_title' # get predominant adjective of item (item has max of 2 adjectives e.g. "exclusive premium")
-                     # bag of words the same words used in client profiling. binary if item has that word or not
+    # --- Create per-row adjective flags ---
+    for adj in adjective_vocab:
+        df[adj] = df['item_title'].str.lower().str.contains(adj).astype(int)
+
+    # --- Transformers ---
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('cat', OneHotEncoder(sparse_output=False, handle_unknown='ignore'), categorical_cols),
+            ('minmax', MinMaxScaler(), minmax_cols),
+            ('std', StandardScaler(), standard_cols),
+        ],
+        remainder='passthrough'  # keep other columns (percentages, seasonal, adjectives)
+    )
+
+    savepath = Path(DATA_DIR) / "preprocessor.pkl"
+
+    if training:
+        processed_array = preprocessor.fit_transform(df)
+        joblib.dump(preprocessor, savepath)
+    else:
+        preprocessor = joblib.load(savepath) 
+        processed_array = preprocessor.transform(df)
+
+    # --- Build final DataFrame ---
+    cat_features = preprocessor.named_transformers_["cat"].get_feature_names_out(categorical_cols).tolist()
+    all_features = cat_features + minmax_cols + standard_cols + [ 
+        c for c in df.columns if c not in categorical_cols + minmax_cols + standard_cols + text_cols 
     ]
+    print(f"processed array shape: {processed_array.shape}")
 
-    date_columns = [
-        'item_release_date', # transform to months and normalize between -1 and 1 for circular proximity
-    ]
+    processed_df = pd.DataFrame(processed_array, columns=all_features, index=df.index)
 
-    
-
-    # processed_df = pd.DataFrame(processed_array, columns=[...])
-    # return processed_df
+    return processed_df
 
 
 def preprocess(raw_df, training=False):
@@ -281,7 +267,11 @@ def preprocess(raw_df, training=False):
     Agrega tu procesamiento de datos, considera si necesitas guardar valores de entrenamiento.
     Utiliza la bandera para distinguir entre preprocesamiento de entrenamiento y validación/prueba
     """
-    processed_df = process_df(raw_df, training)
+    customer_features = extract_customer_features(raw_df)
+    merged_train_df = merge_customer_profiles(raw_df, customer_features)
+
+    processed_df = process_df(merged_train_df, training)
+    save_df(process_df, "processed_train.csv")
     return processed_df
 
 
