@@ -160,6 +160,28 @@ def extract_customer_features(train_df):
     return customer_feat
 
 
+def merge_customer_profiles(train_df: pd.DataFrame, customer_feat: pd.DataFrame) -> pd.DataFrame:
+    """
+    Merge customer features into the main train DataFrame.
+    
+    Args:
+        train_df: DataFrame con todas las compras, cada fila un artículo comprado por un cliente.
+        customer_feat: DataFrame con el perfil del cliente, cada fila un cliente.
+
+    Returns:
+        DataFrame con las columnas del perfil agregadas a cada fila según customer_id.
+    """
+    # Asegurarse de que 'customer_id' sea columna y no índice
+    if 'customer_id' not in train_df.columns:
+        train_df = train_df.reset_index()
+    if 'customer_id' not in customer_feat.columns:
+        customer_feat = customer_feat.reset_index()
+
+    # Merge
+    merged_df = train_df.merge(customer_feat, on='customer_id', how='left')
+    return merged_df
+
+
 def process_df(df, training=True):
     """
     Investiga las siguientes funciones de SKlearn y determina si te son útiles
@@ -176,6 +198,66 @@ def process_df(df, training=True):
     # else:
     #     preprocessor = joblib.load(savepath)
     #     processed_array = preprocessor.transform(df)
+
+    columns_to_process = [
+        'customer_gender',
+        'item_title',
+        'item_category',
+        'item_price',
+        'item_img_filename',
+        'age',
+        'customer_seniority',
+        'avg_purchase_cost',
+        'std_purchase_cost',
+        'cat_pct_blouse',
+        'cat_pct_dress',
+        'cat_pct_jacket',
+        'cat_pct_jeans',
+        'cat_pct_shirt',
+        'cat_pct_shoes',
+        'cat_pct_skirt',
+        'cat_pct_slacks',
+        'cat_pct_suit',
+        'cat_pct_t-shirt',
+        'color_pct_b',
+        'color_pct_bl',
+        'color_pct_g',
+        'color_pct_o',
+        'color_pct_p',
+        'color_pct_r',
+        'color_pct_w',
+        'color_pct_y',
+        'autumn',
+        'spring',
+        'summer',
+        'winter',
+        'avg_days_between_purchases',
+        'days_since_last_purchase',
+        'exclusive',
+        'casual',
+        'stylish',
+        'elegant',
+        'durable',
+        'classic',
+        'lightweight',
+        'modern',
+        'premium'
+    ]
+
+    categorical_cols = [
+        'customer_gender',
+        'item_category',
+        'item_img_filename'
+    ] 
+
+    numeric_cols = [
+        'age', 
+        'customer_seniority', 
+        'avg_purchase_cost', 
+        'std_purchase_cost', 
+        'avg_days_between_purchases', 
+        'days_since_last_purchase'
+    ]
 
     # processed_df = pd.DataFrame(processed_array, columns=[...])
     # return processed_df
