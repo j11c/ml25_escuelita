@@ -241,23 +241,36 @@ def process_df(df, training=True):
         'classic',
         'lightweight',
         'modern',
-        'premium'
+        'premium',
+        'item_release_date'
     ]
 
     categorical_cols = [
-        'customer_gender',
-        'item_category',
-        'item_img_filename'
+        'customer_gender', # one hot encode
+        'item_category', # one hot encode
+        'item_img_filename' 
     ] 
 
     numeric_cols = [
-        'age', 
-        'customer_seniority', 
+        'age', # normalize between max and min of all customers? 0 to 1 because no circular proximity
+        'customer_seniority', # normalize between max and min of all customers: 0 to 1 because no circular proximity
         'avg_purchase_cost', 
         'std_purchase_cost', 
         'avg_days_between_purchases', 
-        'days_since_last_purchase'
+        'days_since_last_purchase',
+        'item_price'
     ]
+
+    text_columns = [
+        'item_title' # get predominant adjective of item (item has max of 2 adjectives e.g. "exclusive premium")
+                     # bag of words the same words used in client profiling. binary if item has that word or not
+    ]
+
+    date_columns = [
+        'item_release_date', # transform to months and normalize between -1 and 1 for circular proximity
+    ]
+
+    
 
     # processed_df = pd.DataFrame(processed_array, columns=[...])
     # return processed_df
