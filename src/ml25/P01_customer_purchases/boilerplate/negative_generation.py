@@ -84,9 +84,30 @@ def gen_final_dataset(train_df, negatives):
 
     # Return
     # Dataframe con labels 0 y uno y las mismas columnas que train_df
-    # concatenar vertical los zeros
-    # shuffle
+def gen_final_dataset(train_df, negatives):
+    
+    positives = train_df.copy()
+    positives["label"] = 1
 
+    all_columns = positives.columns
+    negatives = negatives.reindex(columns=all_columns, fill_value=np.nan)
+
+    final_df = pd.concat([positives, negatives], axis=0, ignore_index=True)
+
+    final_df = final_df.sample(frac=1).reset_index(drop=True)
+    return final_df
+    # contatenar vertical los zeros
+def gen_final_dataset(train_df, negatives):
+    positives = train_df.copy()
+    positives["label"] = 1
+
+    all_columns = positives.columns
+    negatives = negatives.reindex(columns=all_columns, fill_value=np.nan)
+
+    final_df = pd.concat([positives, negatives], axis=0, ignore_index=True)
+
+    final_df = final_df.sample(frac=1).reset_index(drop=True)
+    return final_df
 
 if __name__ == "__main__":
     train_df = read_csv("customer_purchases_train")
