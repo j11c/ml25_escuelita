@@ -15,14 +15,30 @@ def read_csv(filename: str):
     return df
 
 
-def gen_smart_negatives(df):
-    # gen_all_negatives te da todos los productos que no compró el cliente pero son muchos
-    # hacer algo que, para cada cliente, te de un muestreo los productos que no compró
-    # por ejemplo, uno por cada producto que compró.
-    # puede agarrarse un porcentaje de los que ya se generaron con gen_all_negatives para cada cliente.
-    # el punto es que esten balanceados los 0s y 1s para las compras de cada cliente.
-    pass
+def gen_smart_negatives(df, ratio=1.0):
+    unique_customers = df["customer_id"].unique()
+    unique_items = set(df["item_id"].unique())
+    negative_lst = []
 
+    for customer in unique_customers:
+        purchased_items = set(df[df["customer_id"] == customer]["item_id"].unique())
+        non_purchased = list(unique_items - purchased_items)
+        n_positives = len(purchased_items)
+        n_negatives = int(n_positives * ratio)
+
+        if len(non_purchased) <= n_negatives:
+            sampled_negatives = non_purchased
+        else:
+            sampled_negatives = np.random.choice(non_purchased, size=n_negatives, replace=False)
+
+        for item_id in sampled_negatives:
+            negative_lst.append({
+                "customer_id": customer,
+                "item_id": item_id,
+                "label": 0
+            })
+
+    return pd.DataFrame(negative_lst)
 
 def get_negatives(df):
     unique_customers = df["customer_id"].unique()
