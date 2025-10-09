@@ -39,8 +39,7 @@ def save_df(df, filename: str):
     print(f"df saved to {save_path}")
 
 
-# Helper function extract_customer_features
-def get_season(month):
+def get_season(month): # Helper function extract_customer_features
     if month in [12, 1, 2]:
         return 'winter'
     elif month in [3, 4, 5]:
@@ -52,7 +51,6 @@ def get_season(month):
     
 
 def extract_customer_features(train_df):
-    # Consideren: que atributos del cliente siguen disponibles en prueba?
     adjective_vocab = [
         "exclusive",
         "casual",
@@ -249,7 +247,6 @@ def process_df(df, training=True):
     df['release_season'] = df['item_release_date'].dt.month.apply(get_season)
     season_dummies = pd.get_dummies(df['release_season'], prefix='season').astype(int)  # force 0/1
     df = pd.concat([df, season_dummies], axis=1)
-    #df.drop(columns=['item_release_date', 'release_season'], inplace=True)
 
     # --- Create per-row adjective flags ---
     for adj in adjective_vocab:
@@ -288,7 +285,7 @@ def process_df(df, training=True):
     return processed_df
 
 
-def preprocess(raw_df, training=False):
+def preprocess(raw_df, training=False): # funcion final de preprocesamiento
     """
     Agrega tu procesamiento de datos, considera si necesitas guardar valores de entrenamiento.
     Utiliza la bandera para distinguir entre preprocesamiento de entrenamiento y validación/prueba
@@ -369,8 +366,8 @@ def preprocess(raw_df, training=False):
         'season_spring',
         'season_summer',
         'season_autumn',
-        'season_winter',
-        'label'
+        'season_winter'
+        # 'label' se excluye 
     ]]
 
     save_df(processed_df, "processed_train.csv")
