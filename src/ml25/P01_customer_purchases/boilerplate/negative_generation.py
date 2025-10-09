@@ -16,6 +16,11 @@ def read_csv(filename: str):
 
 
 def gen_smart_negatives(df):
+    # gen_all_negatives te da todos los productos que no compró el cliente pero son muchos
+    # hacer algo que, para cada cliente, te de un muestreo los productos que no compró
+    # por ejemplo, uno por cada producto que compró.
+    # puede agarrarse un porcentaje de los que ya se generaron con gen_all_negatives para cada cliente.
+    # el punto es que esten balanceados los 0s y 1s para las compras de cada cliente.
     pass
 
 
