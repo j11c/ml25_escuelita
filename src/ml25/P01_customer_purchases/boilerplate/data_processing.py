@@ -39,8 +39,7 @@ def save_df(df, filename: str):
     print(f"df saved to {save_path}")
 
 
-# Helper function extract_customer_features
-def get_season(month):
+def get_season(month): # Helper function extract_customer_features
     if month in [12, 1, 2]:
         return 'winter'
     elif month in [3, 4, 5]:
@@ -52,7 +51,17 @@ def get_season(month):
     
 
 def extract_customer_features(train_df):
-    # Consideren: que atributos del cliente siguen disponibles en prueba?
+    adjective_vocab = [
+        "exclusive",
+        "casual",
+        "stylish",
+        "elegant",
+        "durable",
+        "classic",
+        "lightweight",
+        "modern",
+        "premium"
+    ]
 
     """
     Extrae features agregadas por cliente para usar en el modelo.
@@ -62,8 +71,6 @@ def extract_customer_features(train_df):
     data["customer_signup_date"] = pd.to_datetime(data["customer_signup_date"])
     data["customer_date_of_birth"] = pd.to_datetime(data["customer_date_of_birth"], errors="coerce")
     data["purchase_timestamp"] = pd.to_datetime(data["purchase_timestamp"])
-
-    #data = data.sort_values(["customer_id", "purchase_timestamp"])
 
     # Base: un cliente por fila
     customer_feat = data[["customer_id"]].drop_duplicates().reset_index(drop=True)
@@ -195,14 +202,18 @@ def process_df(df, training=True):
     - CountVectorizer
     - ColumnTransformer
     """
-    # Ejemplo de codigo para guardar y cargar archivos con pickle
-    # savepath = Path(DATA_DIR) / "preprocessor.pkl"
-    # if training:
-    #     processed_array = preprocessor.fit_transform(df)
-    #     joblib.dump(preprocessor, savepath)
-    # else:
-    #     preprocessor = joblib.load(savepath)
-    #     processed_array = preprocessor.transform(df)
+
+    adjective_vocab = [
+        "exclusive",
+        "casual",
+        "stylish",
+        "elegant",
+        "durable",
+        "classic",
+        "lightweight",
+        "modern",
+        "premium"
+    ]
 
     categorical_cols = [
         'customer_gender',
@@ -227,9 +238,21 @@ def process_df(df, training=True):
         'item_title'
     ]
 
+    date_cols = [
+        'item_release_date'
+    ]
+
+    # --- Create season columns ---
+    df['item_release_date'] = pd.to_datetime(df['item_release_date'], errors='coerce')
+    df['release_season'] = df['item_release_date'].dt.month.apply(get_season)
+    season_dummies = pd.get_dummies(df['release_season'], prefix='season').astype(int)  # force 0/1
+    df = pd.concat([df, season_dummies], axis=1)
+
     # --- Create per-row adjective flags ---
     for adj in adjective_vocab:
-        df[adj] = df['item_title'].str.lower().str.contains(adj).astype(int)
+        adj_col_title = f"{adj}_in_title"
+        df[adj_col_title] = df['item_title'].str.lower().str.contains(adj).astype(int)
+    print(df.shape)
 
     # --- Transformers ---
     preprocessor = ColumnTransformer(
@@ -242,7 +265,6 @@ def process_df(df, training=True):
     )
 
     savepath = Path(DATA_DIR) / "preprocessor.pkl"
-
     if training:
         processed_array = preprocessor.fit_transform(df)
         joblib.dump(preprocessor, savepath)
@@ -252,8 +274,9 @@ def process_df(df, training=True):
 
     # --- Build final DataFrame ---
     cat_features = preprocessor.named_transformers_["cat"].get_feature_names_out(categorical_cols).tolist()
+    print(f"cat_featores: {cat_features}")
     all_features = cat_features + minmax_cols + standard_cols + [ 
-        c for c in df.columns if c not in categorical_cols + minmax_cols + standard_cols + text_cols 
+        c for c in df.columns if c not in categorical_cols + minmax_cols + standard_cols #+ text_cols 
     ]
     print(f"processed array shape: {processed_array.shape}")
 
@@ -262,16 +285,92 @@ def process_df(df, training=True):
     return processed_df
 
 
-def preprocess(raw_df, training=False):
+def preprocess(raw_df, training=False): # funcion final de preprocesamiento
     """
     Agrega tu procesamiento de datos, considera si necesitas guardar valores de entrenamiento.
     Utiliza la bandera para distinguir entre preprocesamiento de entrenamiento y validación/prueba
     """
     customer_features = extract_customer_features(raw_df)
     merged_train_df = merge_customer_profiles(raw_df, customer_features)
-
     processed_df = process_df(merged_train_df, training)
-    save_df(process_df, "processed_train.csv")
+
+    # select desired columns to keep and in desired order
+    processed_df = processed_df[[
+        'customer_gender_female', # customer profile begin
+        'customer_gender_male',
+        'age',
+        'customer_seniority',
+        'avg_days_between_purchases',
+        'days_since_last_purchase',
+        'avg_purchase_cost',
+        'std_purchase_cost',
+        'cat_pct_blouse',
+        'cat_pct_dress',
+        'cat_pct_jacket',
+        'cat_pct_jeans',
+        'cat_pct_shirt',
+        'cat_pct_shoes',
+        'cat_pct_skirt',
+        'cat_pct_slacks',
+        'cat_pct_suit',
+        'cat_pct_t-shirt',
+        'color_pct_b',
+        'color_pct_bl',
+        'color_pct_g',
+        'color_pct_o',
+        'color_pct_p',
+        'color_pct_r',
+        'color_pct_w',
+        'color_pct_y',
+        'autumn',
+        'spring',
+        'summer',
+        'winter',
+        'exclusive',
+        'casual',
+        'stylish',
+        'elegant',
+        'durable',
+        'classic',
+        'lightweight',
+        'modern',
+        'premium',
+        'item_category_blouse', # item profile begin
+        'item_category_dress',
+        'item_category_jacket',
+        'item_category_jeans',
+        'item_category_shirt',
+        'item_category_shoes',
+        'item_category_skirt',
+        'item_category_slacks',
+        'item_category_suit',
+        'item_category_t-shirt',
+        'exclusive_in_title',
+        'casual_in_title',
+        'stylish_in_title',
+        'elegant_in_title',
+        'durable_in_title',
+        'classic_in_title',
+        'lightweight_in_title',
+        'modern_in_title',
+        'premium_in_title',
+        'item_img_filename_imgb.jpg',
+        'item_img_filename_imgbl.jpg',
+        'item_img_filename_imgg.jpg',
+        'item_img_filename_imgo.jpg',
+        'item_img_filename_imgp.jpg',
+        'item_img_filename_imgr.jpg',
+        'item_img_filename_imgw.jpg',
+        'item_img_filename_imgy.jpg',
+        'item_price',
+        'season_spring',
+        'season_summer',
+        'season_autumn',
+        'season_winter'
+        # 'label' se excluye 
+    ]]
+
+    save_df(processed_df, "processed_train.csv")
     return processed_df
 
 
