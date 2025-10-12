@@ -65,7 +65,13 @@ def run_training(X, y, classifier: str = "random_forest", test_size: float = 0.2
 if __name__ == "__main__":
     X, y = read_train_data()
 
-    classifiers = ["svm", "random_forest", "logistic", "xgboost"]
+    classifiers = [
+        "svm", 
+        "random_forest", 
+        "logistic", 
+        "xgboost"
+    ]
+    
     trained_models = {}
     auc_scores = {}
 

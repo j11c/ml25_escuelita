@@ -40,7 +40,7 @@ class PurchaseModel:
         return self
 
     def predict(self, X):
-        self.model.predict(X)
+        return self.model.predict(X)
 
     def predict_proba(self, X):
         if hasattr(self.model, "predict_proba"):
@@ -80,7 +80,7 @@ class PurchaseModel:
         """
         filepath = Path(MODELS_DIR) / filename
         model = joblib.load(filepath)
-        print(f"{self.__repr__} || Model loaded from {filepath}")
+        print(f"{self!r} || Model loaded from {filepath}")
         return model
 
     def __repr__(self):
