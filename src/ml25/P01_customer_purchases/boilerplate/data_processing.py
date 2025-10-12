@@ -39,6 +39,13 @@ def save_df(df, filename: str):
     print(f"df saved to {save_path}")
 
 
+def df_to_numeric(df):
+    data = df.copy()
+    for c in data.columns:
+        data[c] = pd.to_numeric(data[c], errors="coerce")
+    return data
+
+
 def get_season(month): # Helper function extract_customer_features
     if month in [12, 1, 2]:
         return 'winter'
@@ -234,14 +241,6 @@ def process_df(df, training=True):
         'std_purchase_cost'
     ]
 
-    text_cols = [
-        'item_title'
-    ]
-
-    date_cols = [
-        'item_release_date'
-    ]
-
     # --- Create season columns ---
     df['item_release_date'] = pd.to_datetime(df['item_release_date'], errors='coerce')
     df['release_season'] = df['item_release_date'].dt.month.apply(get_season)
@@ -252,7 +251,6 @@ def process_df(df, training=True):
     for adj in adjective_vocab:
         adj_col_title = f"{adj}_in_title"
         df[adj_col_title] = df['item_title'].str.lower().str.contains(adj).astype(int)
-    print(df.shape)
 
     # --- Transformers ---
     preprocessor = ColumnTransformer(
@@ -264,6 +262,7 @@ def process_df(df, training=True):
         remainder='passthrough'  # keep other columns (percentages, seasonal, adjectives)
     )
 
+    # ----- From scratch or reuse if training or not -------
     savepath = Path(DATA_DIR) / "preprocessor.pkl"
     if training:
         processed_array = preprocessor.fit_transform(df)
@@ -276,12 +275,10 @@ def process_df(df, training=True):
     cat_features = preprocessor.named_transformers_["cat"].get_feature_names_out(categorical_cols).tolist()
     print(f"cat_featores: {cat_features}")
     all_features = cat_features + minmax_cols + standard_cols + [ 
-        c for c in df.columns if c not in categorical_cols + minmax_cols + standard_cols #+ text_cols 
+        c for c in df.columns if c not in categorical_cols + minmax_cols + standard_cols
     ]
-    print(f"processed array shape: {processed_array.shape}")
 
     processed_df = pd.DataFrame(processed_array, columns=all_features, index=df.index)
-
     return processed_df
 
 
@@ -374,13 +371,6 @@ def preprocess(raw_df, training=False): # funcion final de preprocesamiento
     return processed_df
 
 
-def df_to_numeric(df):
-    data = df.copy()
-    for c in data.columns:
-        data[c] = pd.to_numeric(data[c], errors="coerce")
-    return data
-
-
 def read_train_data():
     train_df = read_csv("customer_purchases_train")
     customer_feat = extract_customer_features(train_df)
@@ -392,9 +382,9 @@ def read_train_data():
 def read_test_data():
     test_df = read_csv("customer_purchases_test")
     customer_feat = read_csv("customer_feat.csv")
+    test_df = pd.merge(test_df, customer_feat, on="customer_id")
 
-    # Cambiar por sus datos procesados
-    # Prueba no tiene etiquetas
+
     X_test = test_df
     return X_test
 
