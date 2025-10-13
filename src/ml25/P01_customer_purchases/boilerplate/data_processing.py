@@ -4,31 +4,19 @@ import joblib
 from pathlib import Path
 from datetime import datetime
 
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder, StandardScaler, MinMaxScaler
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 
-from ml25.P01_customer_purchases.boilerplate.negative_generation import (
+from negative_generation import (
     gen_final_dataset, gen_all_negatives, gen_random_negatives, gen_smart_negatives)
 
 
 DATA_COLLECTED_AT = datetime(2025, 9, 21).date()
 CURRENT_FILE = Path(__file__).resolve()
 DATA_DIR = CURRENT_FILE / "../../../datasets/customer_purchases/"
-
-
-adjective_vocab = [
-    "exclusive",
-    "casual",
-    "stylish",
-    "elegant",
-    "durable",
-    "classic",
-    "lightweight",
-    "modern",
-    "premium"
-]
 
 
 def read_csv(filename: str):
@@ -63,7 +51,14 @@ def get_season(month): # Helper function extract_customer_features
         return 'autumn'
     
 
-def extract_customer_features(train_df):
+def extract_customer_features(df):  # extract customer features from label 1 non validation segment (X_train)
+    """
+    Extrae features agregadas por cliente para usar en el modelo.
+    Devuelve un DataFrame con una fila por cliente, indicando su perfil.
+    """
+
+    data = df.copy()
+
     adjective_vocab = [
         "exclusive",
         "casual",
@@ -76,14 +71,15 @@ def extract_customer_features(train_df):
         "premium"
     ]
 
-    """
-    Extrae features agregadas por cliente para usar en el modelo.
-    Devuelve un DataFrame con una fila por cliente, indicando su perfil.
-    """
-    data = train_df.copy()
-    data["customer_signup_date"] = pd.to_datetime(data["customer_signup_date"])
-    data["customer_date_of_birth"] = pd.to_datetime(data["customer_date_of_birth"], errors="coerce")
-    data["purchase_timestamp"] = pd.to_datetime(data["purchase_timestamp"])
+    dates = [
+        "customer_signup_date", 
+        "customer_date_of_birth", 
+        "purchase_timestamp"
+    ]
+
+    for col in dates:
+        data[col] = pd.to_datetime(data[col], errors="coerce")
+
 
     # Base: un cliente por fila
     customer_feat = data[["customer_id"]].drop_duplicates().reset_index(drop=True)
@@ -180,6 +176,9 @@ def extract_customer_features(train_df):
     # Merge al perfil del cliente
     customer_feat = customer_feat.merge(titles_df, on='customer_id', how='left')
 
+    # Renombrar columnas
+    customer_feat = customer_feat.rename(columns=lambda c: c if c.startswith("customer") else f"customer_{c}")
+
     # Guardar
     save_df(customer_feat, "customer_features.csv")
     return customer_feat
@@ -187,7 +186,7 @@ def extract_customer_features(train_df):
 
 def merge_customer_profiles(train_df: pd.DataFrame, customer_feat: pd.DataFrame) -> pd.DataFrame:
     """
-    Merge customer features into the main train DataFrame.
+    Merge customer features into the main COMPLETE train DataFrame.
     
     Args:
         train_df: DataFrame con todas las compras, cada fila un artículo comprado por un cliente.
@@ -235,27 +234,27 @@ def process_df(df, training=True):
     ]
 
     minmax_cols = [
-        'age',
+        'customer_age',
         'customer_seniority'
     ]
 
     standard_cols = [
-        'avg_days_between_purchases',
-        'days_since_last_purchase',
+        'customer_avg_days_between_purchases',
+        'customer_days_since_last_purchase',
         'item_price',
-        'avg_purchase_cost',
-        'std_purchase_cost'
+        'customer_avg_purchase_cost',
+        'customer_std_purchase_cost'
     ]
 
     # --- Create season columns ---
     df['item_release_date'] = pd.to_datetime(df['item_release_date'], errors='coerce')
     df['release_season'] = df['item_release_date'].dt.month.apply(get_season)
-    season_dummies = pd.get_dummies(df['release_season'], prefix='season').astype(int)  # force 0/1
+    season_dummies = pd.get_dummies(df['release_season'], prefix='item_season').astype(int)  # force 0/1
     df = pd.concat([df, season_dummies], axis=1)
 
     # --- Create per-row adjective flags ---
     for adj in adjective_vocab:
-        adj_col_title = f"{adj}_in_title"
+        adj_col_title = f"item_{adj}_in_title"
         df[adj_col_title] = df['item_title'].str.lower().str.contains(adj).astype(int)
 
     # --- Transformers ---
@@ -293,51 +292,56 @@ def preprocess(raw_df, training=False): # funcion final de preprocesamiento
     Agrega tu procesamiento de datos, considera si necesitas guardar valores de entrenamiento.
     Utiliza la bandera para distinguir entre preprocesamiento de entrenamiento y validación/prueba
     """
-    customer_features = extract_customer_features(raw_df)
-    merged_train_df = merge_customer_profiles(raw_df, customer_features)
-    processed_df = process_df(merged_train_df, training)
+
+    # customer features se debe calcular en base al segmento de entrenamiento
+    #customer_features = extract_customer_features(raw_df)
+
+    #merged_train_df = merge_customer_profiles(raw_df, customer_features)
+    processed_df = process_df(raw_df, training)
 
     # select desired columns to keep and in desired order
     processed_df = processed_df[[
+        'customer_id', # customer id
         'customer_gender_female', # customer profile begin
         'customer_gender_male',
-        'age',
+        'customer_age',
         'customer_seniority',
-        'avg_days_between_purchases',
-        'days_since_last_purchase',
-        'avg_purchase_cost',
-        'std_purchase_cost',
-        'cat_pct_blouse',
-        'cat_pct_dress',
-        'cat_pct_jacket',
-        'cat_pct_jeans',
-        'cat_pct_shirt',
-        'cat_pct_shoes',
-        'cat_pct_skirt',
-        'cat_pct_slacks',
-        'cat_pct_suit',
-        'cat_pct_t-shirt',
-        'color_pct_b',
-        'color_pct_bl',
-        'color_pct_g',
-        'color_pct_o',
-        'color_pct_p',
-        'color_pct_r',
-        'color_pct_w',
-        'color_pct_y',
-        'autumn',
-        'spring',
-        'summer',
-        'winter',
-        'exclusive',
-        'casual',
-        'stylish',
-        'elegant',
-        'durable',
-        'classic',
-        'lightweight',
-        'modern',
-        'premium',
+        'customer_avg_days_between_purchases',
+        'customer_days_since_last_purchase',
+        'customer_avg_purchase_cost',
+        'customer_std_purchase_cost',
+        'customer_cat_pct_blouse',
+        'customer_cat_pct_dress',
+        'customer_cat_pct_jacket',
+        'customer_cat_pct_jeans',
+        'customer_cat_pct_shirt',
+        'customer_cat_pct_shoes',
+        'customer_cat_pct_skirt',
+        'customer_cat_pct_slacks',
+        'customer_cat_pct_suit',
+        'customer_cat_pct_t-shirt',
+        'customer_color_pct_b',
+        'customer_color_pct_bl',
+        'customer_color_pct_g',
+        'customer_color_pct_o',
+        'customer_color_pct_p',
+        'customer_color_pct_r',
+        'customer_color_pct_w',
+        'customer_color_pct_y',
+        'customer_autumn',
+        'customer_spring',
+        'customer_summer',
+        'customer_winter',
+        'customer_exclusive',
+        'customer_casual',
+        'customer_stylish',
+        'customer_elegant',
+        'customer_durable',
+        'customer_classic',
+        'customer_lightweight',
+        'customer_modern',
+        'customer_premium',
+        'item_id', # item id
         'item_category_blouse', # item profile begin
         'item_category_dress',
         'item_category_jacket',
@@ -348,15 +352,15 @@ def preprocess(raw_df, training=False): # funcion final de preprocesamiento
         'item_category_slacks',
         'item_category_suit',
         'item_category_t-shirt',
-        'exclusive_in_title',
-        'casual_in_title',
-        'stylish_in_title',
-        'elegant_in_title',
-        'durable_in_title',
-        'classic_in_title',
-        'lightweight_in_title',
-        'modern_in_title',
-        'premium_in_title',
+        'item_exclusive_in_title',
+        'item_casual_in_title',
+        'item_stylish_in_title',
+        'item_elegant_in_title',
+        'item_durable_in_title',
+        'item_classic_in_title',
+        'item_lightweight_in_title',
+        'item_modern_in_title',
+        'item_premium_in_title',
         'item_img_filename_imgb.jpg',
         'item_img_filename_imgbl.jpg',
         'item_img_filename_imgg.jpg',
@@ -366,22 +370,122 @@ def preprocess(raw_df, training=False): # funcion final de preprocesamiento
         'item_img_filename_imgw.jpg',
         'item_img_filename_imgy.jpg',
         'item_price',
-        'season_spring',
-        'season_summer',
-        'season_autumn',
-        'season_winter'
-        # 'label' se excluye 
+        'item_season_spring',
+        'item_season_summer',
+        'item_season_autumn',
+        'item_season_winter',
+        'label'
     ]]
+
+    
 
     save_df(processed_df, "processed_train.csv")
     return processed_df
 
 
+def smart_train_val_split(complete_df, frac_train=0.8, random_state=42): # for customer features extraction
+    '''
+    DATA IS ASSUMED TO HAVE POSITIVES AND NEGATIVES
+
+    This custom train-test split is necessary because customer profiles need to be calculated
+    based on positive train split only to avoid data leakage. However, this approach requires each customer 
+    to contribute 80% of its purchases to the train split and the remaining 20% to validation.
+    sklearn's train_val_split implementation doesn't offer the granularity to achieve this requirement.
+    '''
+    train_parts = []
+    val_parts = []
+
+    for cust_id, group in complete_df.groupby("customer_id"):
+        if len(group) == 1:
+            # If customer has only one purchase, send to train
+            train_parts.append(group)
+            continue
+
+        train_g, val_g = train_test_split(
+            group,
+            train_size = frac_train,
+            random_state=random_state,
+            shffle=True,
+        )
+        train_parts.append(train_g)
+        val_parts.append(val_g)
+    
+    # read train data
+    # calculate negatives for train_data
+    # split 
+    #   train: 80% positives + 80% negatives per customer
+    #   val: 20% positives + 20% negatives per customer
+    # calculate customer_features on positive train
+    # merge customer_features on train & val
+
+    
 def read_train_data():
     train_df = read_csv("customer_purchases_train")
     customer_feat = extract_customer_features(train_df)
-    X = ...
-    y = train_df["label"]
+
+    # -------------- Agregar negativos ------------------ #
+    # Generar negativos
+    train_df_neg = gen_smart_negatives(train_df, ratio=1.0)
+
+    # Agregar Features del cliente
+    train_df_cust = pd.merge(train_df, customer_feat, on="customer_id", how="left")
+
+    processed_pos = preprocess(train_df_cust, training=True)
+    processed_pos["label"] = 1
+
+    # Obtener todas las columnas
+    all_columns = processed_pos.columns
+
+    # Separar los features exclusivos de los items
+    item_feat = [col for col in all_columns if "item" in col]
+    unique_items = processed_pos[item_feat].drop_duplicates(
+        subset=[
+            "item_id",
+        ]
+    )
+
+    # Separar los features exclusivos de los clientes
+    customer_feat = [col for col in all_columns if "customer" in col]
+    unique_customers = processed_pos[customer_feat].drop_duplicates(
+        subset=["customer_id"]
+    )
+
+    # Agregar los features de los items a los negativos
+    processed_neg = pd.merge(
+        train_df_neg,
+        unique_items,
+        on=["item_id"],
+        how="left",
+    )
+
+    # Agregar los features de los usuarios a los negativos
+    processed_neg = pd.merge(
+        processed_neg,
+        unique_customers,
+        on=["customer_id"],
+        how="left",
+    )
+
+    # Agregar etiqueta a los negativos
+    processed_neg["label"] = 0
+
+    # Combinar negativos con positivos para tener el dataset completo
+    processed_full = (
+        pd.concat([processed_pos, processed_neg], axis=0)
+        .sample(frac=1)
+        .reset_index(drop=True)
+    )
+
+    # Randomizar los datos (shuffle de las filas)
+    shuffled = processed_full.sample(frac=1)
+    # save_df(shuffled, "data_to_use.csv")
+
+    # Transformar a tipo numero
+    shuffled = df_to_numeric(shuffled)
+    y = shuffled["label"]
+
+    # Eliminar columnas que no sirven
+    X = shuffled.drop(columns=["label", "customer_id", "item_id"])
     return X, y
 
 
