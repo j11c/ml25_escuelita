@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import numpy as np
 
+
 CURRENT_FILE = Path(__file__).resolve()
 DATA_DIR = CURRENT_FILE / "../../../datasets/customer_purchases/"
 
@@ -15,31 +16,6 @@ def read_csv(filename: str):
     return df
 
 
-def gen_smart_negatives(df, ratio=1.0):
-    unique_customers = df["customer_id"].unique()
-    unique_items = set(df["item_id"].unique())
-    negative_lst = []
-
-    for customer in unique_customers:
-        purchased_items = set(df[df["customer_id"] == customer]["item_id"].unique())
-        non_purchased = list(unique_items - purchased_items)
-        n_positives = len(purchased_items)
-        n_negatives = int(n_positives * ratio)
-
-        if len(non_purchased) <= n_negatives:
-            sampled_negatives = non_purchased
-        else:
-            sampled_negatives = np.random.choice(non_purchased, size=n_negatives, replace=False)
-
-        for item_id in sampled_negatives:
-            negative_lst.append({
-                "customer_id": customer,
-                "item_id": item_id,
-                "label": 0
-            })
-
-    return pd.DataFrame(negative_lst)
-
 def get_negatives(df):
     unique_customers = df["customer_id"].unique()
     unique_items = set(df["item_id"].unique())
@@ -50,6 +26,30 @@ def get_negatives(df):
         non_purchased = unique_items - set(purcharsed_items)
         negatives[customer] = non_purchased
     return negatives
+
+
+def gen_smart_negatives(df, ratio=1.0):
+    negatives = get_negatives(df)  # dict: customer_id : set of non-purchased items
+    negative_lst = []
+
+    for customer_id, non_purchased_items in negatives.items():
+        n_positives = df[df["customer_id"] == customer_id].shape[0]  # number of purchases
+        n_negatives = int(n_positives * ratio)
+
+        # sample negatives without replacement, but not more than available
+        if len(non_purchased_items) <= n_negatives:
+            sampled_negatives = list(non_purchased_items)
+        else:
+            sampled_negatives = np.random.choice(list(non_purchased_items), size=n_negatives, replace=False)
+
+        for item_id in sampled_negatives:
+            negative_lst.append({
+                "customer_id": customer_id,
+                "item_id": item_id,
+                "label": 0
+            })
+
+    return pd.DataFrame(negative_lst)
 
 
 def gen_all_negatives(df):
