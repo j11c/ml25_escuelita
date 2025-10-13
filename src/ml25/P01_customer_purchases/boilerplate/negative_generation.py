@@ -79,11 +79,11 @@ def gen_random_negatives(df, n_per_positive=2):
 
 
 def gen_final_dataset(train_df, negatives=None):
-    # Return
+    # Return 
     # Dataframe con labels 0 y uno y las mismas columnas que train_df
     # concatenar vertical los zeros
     # shuffle
-    
+
     # Si no se pasa un DF de negativos, generar negativos inteligentes default ratio 1
     if negatives is None:
         negatives = gen_smart_negatives(train_df)

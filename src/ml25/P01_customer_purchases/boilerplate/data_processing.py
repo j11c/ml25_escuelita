@@ -1,16 +1,22 @@
 import pandas as pd
 import os
+import joblib
 from pathlib import Path
 from datetime import datetime
-from sklearn.feature_extraction.text import CountVectorizer
+
 from sklearn.preprocessing import OneHotEncoder, StandardScaler, MinMaxScaler
+from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
-import joblib
+
+from ml25.P01_customer_purchases.boilerplate.negative_generation import (
+    gen_final_dataset, gen_all_negatives, gen_random_negatives, gen_smart_negatives)
+
 
 DATA_COLLECTED_AT = datetime(2025, 9, 21).date()
 CURRENT_FILE = Path(__file__).resolve()
 DATA_DIR = CURRENT_FILE / "../../../datasets/customer_purchases/"
+
 
 adjective_vocab = [
     "exclusive",
@@ -382,8 +388,13 @@ def read_train_data():
 def read_test_data():
     test_df = read_csv("customer_purchases_test")
     customer_feat = read_csv("customer_feat.csv")
-    test_df = pd.merge(test_df, customer_feat, on="customer_id")
 
+    # generar negativos
+    train_df_neg = gen_random_negatives(train_df, n_per_positive=2)
+    train_df_neg = train_df_neg.drop_duplicates(subset=["customer_id", "item_id"])
+    
+
+    test_df = pd.merge(test_df, customer_feat, on="customer_id")
 
     X_test = test_df
     return X_test
