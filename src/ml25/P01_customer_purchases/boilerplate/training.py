@@ -5,9 +5,9 @@ from sklearn.metrics import classification_report, accuracy_score, roc_auc_score
 from time import time
 
 # Custom
-from ml25.P01_customer_purchases.boilerplate.utils import setup_logger
-from ml25.P01_customer_purchases.boilerplate.data_processing import read_train_data
-from ml25.P01_customer_purchases.boilerplate.model import PurchaseModel
+from utils import setup_logger
+from data_processing import read_train_data
+from model import PurchaseModel
 
 
 MODEL_PARAMS = {
@@ -44,7 +44,7 @@ def run_training(X, y, classifier: str = "random_forest", test_size: float = 0.2
     y_pred = model.predict(X_val)
     acc = accuracy_score(y_val, y_pred)
     logger.info(f"Validation accuracy: {acc:.4f}")
-    logger.ingo("Classification report:\n" + classification_report(y_val, y_pred))
+    logger.info("Classification report:\n" + classification_report(y_val, y_pred))
 
     # 5.2 Tarea Secundaria
     if hasattr(model, "predict_proba"):
