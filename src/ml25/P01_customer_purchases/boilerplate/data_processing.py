@@ -186,19 +186,12 @@ def extract_customer_features(df):  # extract customer features from label 1 non
 
 def process_df(df, training=True):
     """
-    El df ya debe tener los customer_features y del item
+    The df must already have customer and item features merged.
     """
 
     adjective_vocab = [
-        "exclusive",
-        "casual",
-        "stylish",
-        "elegant",
-        "durable",
-        "classic",
-        "lightweight",
-        "modern",
-        "premium"
+        "exclusive", "casual", "stylish", "elegant", "durable",
+        "classic", "lightweight", "modern", "premium"
     ]
 
     categorical_cols = [
@@ -220,53 +213,73 @@ def process_df(df, training=True):
         'customer_std_purchase_cost'
     ]
 
-    # --- Create season columns ---
+    # --- Create item season release columns ---
     df['item_release_date'] = pd.to_datetime(df['item_release_date'], errors='coerce')
     df['release_season'] = df['item_release_date'].dt.month.apply(get_season)
 
-    season_dummies = pd.get_dummies(df['release_season'], prefix='item_season').astype(int)  # force 0/1
+    #season_dummies = pd.get_dummies(df['release_season'], prefix='item_season').astype(int)
+
+    # Ensure all expected season dummy columns exist
+    all_seasons = ['winter', 'spring', 'summer', 'autumn']
+    season_dummies = pd.get_dummies(df['release_season'], prefix='item_season').reindex(
+        columns=[f'item_season_{s}' for s in all_seasons],
+        fill_value=0
+    ).astype(int)
+
+
     df = pd.concat([df, season_dummies], axis=1)
 
-    # --- Create per-row adjective flags ---
+    # --- Create per-row adjective in item flags ---
     for adj in adjective_vocab:
-        adj_col_title = f"item_{adj}_in_title"
-        df[adj_col_title] = df['item_title'].str.lower().str.contains(adj).astype(int)
+        df[f"item_{adj}_in_title"] = df['item_title'].str.lower().str.contains(adj).astype(int)
 
-    # --- Transformers ---
+    # --- Preprocessor definition ---
     preprocessor = ColumnTransformer(
         transformers=[
             ('cat', OneHotEncoder(sparse_output=False, handle_unknown='ignore'), categorical_cols),
             ('minmax', MinMaxScaler(), minmax_cols),
             ('std', StandardScaler(), standard_cols),
         ],
-        remainder='passthrough'  # keep other columns (percentages, seasonal, adjectives)
+        remainder='passthrough'
     )
 
-    # ----- From scratch or reuse if training or not -------
     savepath = Path(DATA_DIR) / "preprocessor.pkl"
+
+    # --- Drop label only during fit ---
+    fit_df = df.drop(columns=["label"], errors="ignore")
+
     if training:
-        processed_array = preprocessor.fit_transform(df)
+        processed_array = preprocessor.fit_transform(fit_df)
         joblib.dump(preprocessor, savepath)
     else:
-        preprocessor = joblib.load(savepath) 
-        processed_array = preprocessor.transform(df)
+        preprocessor = joblib.load(savepath)
+        processed_array = preprocessor.transform(fit_df)
 
     # --- Build final DataFrame ---
     cat_features = preprocessor.named_transformers_["cat"].get_feature_names_out(categorical_cols).tolist()
-    all_features = cat_features + minmax_cols + standard_cols + [ 
-        c for c in df.columns if c not in categorical_cols + minmax_cols + standard_cols
+    all_features = cat_features + minmax_cols + standard_cols + [
+        c for c in fit_df.columns if c not in categorical_cols + minmax_cols + standard_cols
     ]
 
     processed_df = pd.DataFrame(processed_array, columns=all_features, index=df.index)
+
+    # --- Add label back if training ---
+    if training and "label" in df.columns:
+        processed_df["label"] = df["label"].values
+
     return processed_df
 
 
-def preprocess(raw_df, training=False): # funcion final de preprocesamiento
+def preprocess(raw_df, training=True): # funcion final de preprocesamiento
     if training:
         customer_features = extract_customer_features(raw_df)
-        merged = pd.merge(test_df, customer_features, on="customer_id", how="left")
+    else:
+        customer_features = read_csv("customer_features")
 
-    processed_df = process_df(raw_df, training)
+    merged = pd.merge(raw_df, customer_features, on="customer_id", how="left")
+
+    # process df with customer features
+    processed_df = process_df(merged, training=training)
 
     # select desired columns to keep and in desired order
     if training:
@@ -431,16 +444,8 @@ def preprocess(raw_df, training=False): # funcion final de preprocesamiento
 
 def read_train_data():
     train_df = read_csv("customer_purchases_train")
-    customer_feat = extract_customer_features(train_df)
 
-    # -------------- Agregar negativos ------------------ #
-    # Generar negativos
-    train_df_neg = gen_smart_negatives(train_df, ratio=1.0)
-
-    # Agregar Features del cliente
-    train_df_cust = pd.merge(train_df, customer_feat, on="customer_id", how="left")
-
-    processed_pos = preprocess(train_df_cust, training=True)
+    processed_pos = preprocess(train_df, training=True) # esto calcula los atributos del cliente
     processed_pos["label"] = 1
 
     # Obtener todas las columnas
@@ -449,9 +454,7 @@ def read_train_data():
     # Separar los features exclusivos de los items
     item_feat = [col for col in all_columns if "item" in col]
     unique_items = processed_pos[item_feat].drop_duplicates(
-        subset=[
-            "item_id",
-        ]
+        subset=["item_id"]
     )
 
     # Separar los features exclusivos de los clientes
@@ -459,6 +462,9 @@ def read_train_data():
     unique_customers = processed_pos[customer_feat].drop_duplicates(
         subset=["customer_id"]
     )
+
+    # Generar negativos
+    train_df_neg = gen_smart_negatives(train_df, ratio=1.0)
 
     # Agregar los features de los items a los negativos
     processed_neg = pd.merge(
@@ -501,17 +507,14 @@ def read_train_data():
 
 def read_test_data():
     test_df = read_csv("customer_purchases_test")
-    customer_feat = read_csv("customer_features")
-    #test_df = pd.merge(test_df, customer_feat, on="customer_id")
 
-    # agregar features derivados del cliente al dataset
-    merged = pd.merge(test_df, customer_feat, on="customer_id", how="left")
-
-    # Procesamiento de datos
-    processed = preprocess(merged, training=False)
+    processed = preprocess(test_df, training=False) # esto agrega los atributos del cliente
 
     # Si se requiere
-    dropcols = []
+    dropcols = [
+        "customer_id",
+        "item_id"
+    ]
     processed = processed.drop(columns=dropcols)
 
     return df_to_numeric(processed)
