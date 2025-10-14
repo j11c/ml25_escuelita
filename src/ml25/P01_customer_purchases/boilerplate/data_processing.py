@@ -249,6 +249,7 @@ def process_df(df, training=True):
     # --- Create season columns ---
     df['item_release_date'] = pd.to_datetime(df['item_release_date'], errors='coerce')
     df['release_season'] = df['item_release_date'].dt.month.apply(get_season)
+
     season_dummies = pd.get_dummies(df['release_season'], prefix='item_season').astype(int)  # force 0/1
     df = pd.concat([df, season_dummies], axis=1)
 
@@ -278,7 +279,6 @@ def process_df(df, training=True):
 
     # --- Build final DataFrame ---
     cat_features = preprocessor.named_transformers_["cat"].get_feature_names_out(categorical_cols).tolist()
-    print(f"cat_featores: {cat_features}")
     all_features = cat_features + minmax_cols + standard_cols + [ 
         c for c in df.columns if c not in categorical_cols + minmax_cols + standard_cols
     ]
@@ -300,123 +300,163 @@ def preprocess(raw_df, training=False): # funcion final de preprocesamiento
     processed_df = process_df(raw_df, training)
 
     # select desired columns to keep and in desired order
-    processed_df = processed_df[[
-        'customer_id', # customer id
-        'customer_gender_female', # customer profile begin
-        'customer_gender_male',
-        'customer_age',
-        'customer_seniority',
-        'customer_avg_days_between_purchases',
-        'customer_days_since_last_purchase',
-        'customer_avg_purchase_cost',
-        'customer_std_purchase_cost',
-        'customer_cat_pct_blouse',
-        'customer_cat_pct_dress',
-        'customer_cat_pct_jacket',
-        'customer_cat_pct_jeans',
-        'customer_cat_pct_shirt',
-        'customer_cat_pct_shoes',
-        'customer_cat_pct_skirt',
-        'customer_cat_pct_slacks',
-        'customer_cat_pct_suit',
-        'customer_cat_pct_t-shirt',
-        'customer_color_pct_b',
-        'customer_color_pct_bl',
-        'customer_color_pct_g',
-        'customer_color_pct_o',
-        'customer_color_pct_p',
-        'customer_color_pct_r',
-        'customer_color_pct_w',
-        'customer_color_pct_y',
-        'customer_autumn',
-        'customer_spring',
-        'customer_summer',
-        'customer_winter',
-        'customer_exclusive',
-        'customer_casual',
-        'customer_stylish',
-        'customer_elegant',
-        'customer_durable',
-        'customer_classic',
-        'customer_lightweight',
-        'customer_modern',
-        'customer_premium',
-        'item_id', # item id
-        'item_category_blouse', # item profile begin
-        'item_category_dress',
-        'item_category_jacket',
-        'item_category_jeans',
-        'item_category_shirt',
-        'item_category_shoes',
-        'item_category_skirt',
-        'item_category_slacks',
-        'item_category_suit',
-        'item_category_t-shirt',
-        'item_exclusive_in_title',
-        'item_casual_in_title',
-        'item_stylish_in_title',
-        'item_elegant_in_title',
-        'item_durable_in_title',
-        'item_classic_in_title',
-        'item_lightweight_in_title',
-        'item_modern_in_title',
-        'item_premium_in_title',
-        'item_img_filename_imgb.jpg',
-        'item_img_filename_imgbl.jpg',
-        'item_img_filename_imgg.jpg',
-        'item_img_filename_imgo.jpg',
-        'item_img_filename_imgp.jpg',
-        'item_img_filename_imgr.jpg',
-        'item_img_filename_imgw.jpg',
-        'item_img_filename_imgy.jpg',
-        'item_price',
-        'item_season_spring',
-        'item_season_summer',
-        'item_season_autumn',
-        'item_season_winter',
-        'label'
-    ]]
-
-    
+    if training:
+        processed_df = processed_df[[
+            'customer_id', # customer id
+            'customer_gender_female', # customer profile begin
+            'customer_gender_male',
+            'customer_age',
+            'customer_seniority',
+            'customer_avg_days_between_purchases',
+            'customer_days_since_last_purchase',
+            'customer_avg_purchase_cost',
+            'customer_std_purchase_cost',
+            'customer_cat_pct_blouse',
+            'customer_cat_pct_dress',
+            'customer_cat_pct_jacket',
+            'customer_cat_pct_jeans',
+            'customer_cat_pct_shirt',
+            'customer_cat_pct_shoes',
+            'customer_cat_pct_skirt',
+            'customer_cat_pct_slacks',
+            'customer_cat_pct_suit',
+            'customer_cat_pct_t-shirt',
+            'customer_color_pct_b',
+            'customer_color_pct_bl',
+            'customer_color_pct_g',
+            'customer_color_pct_o',
+            'customer_color_pct_p',
+            'customer_color_pct_r',
+            'customer_color_pct_w',
+            'customer_color_pct_y',
+            'customer_autumn',
+            'customer_spring',
+            'customer_summer',
+            'customer_winter',
+            'customer_exclusive',
+            'customer_casual',
+            'customer_stylish',
+            'customer_elegant',
+            'customer_durable',
+            'customer_classic',
+            'customer_lightweight',
+            'customer_modern',
+            'customer_premium',
+            'item_id', # item id
+            'item_category_blouse', # item profile begin
+            'item_category_dress',
+            'item_category_jacket',
+            'item_category_jeans',
+            'item_category_shirt',
+            'item_category_shoes',
+            'item_category_skirt',
+            'item_category_slacks',
+            'item_category_suit',
+            'item_category_t-shirt',
+            'item_exclusive_in_title',
+            'item_casual_in_title',
+            'item_stylish_in_title',
+            'item_elegant_in_title',
+            'item_durable_in_title',
+            'item_classic_in_title',
+            'item_lightweight_in_title',
+            'item_modern_in_title',
+            'item_premium_in_title',
+            'item_img_filename_imgb.jpg',
+            'item_img_filename_imgbl.jpg',
+            'item_img_filename_imgg.jpg',
+            'item_img_filename_imgo.jpg',
+            'item_img_filename_imgp.jpg',
+            'item_img_filename_imgr.jpg',
+            'item_img_filename_imgw.jpg',
+            'item_img_filename_imgy.jpg',
+            'item_price',
+            'item_season_spring',
+            'item_season_summer',
+            'item_season_autumn',
+            'item_season_winter',
+            'label'
+        ]]
+    else:
+        processed_df = processed_df[[
+            'customer_id', # customer id
+            'customer_gender_female', # customer profile begin
+            'customer_gender_male',
+            'customer_age',
+            'customer_seniority',
+            'customer_avg_days_between_purchases',
+            'customer_days_since_last_purchase',
+            'customer_avg_purchase_cost',
+            'customer_std_purchase_cost',
+            'customer_cat_pct_blouse',
+            'customer_cat_pct_dress',
+            'customer_cat_pct_jacket',
+            'customer_cat_pct_jeans',
+            'customer_cat_pct_shirt',
+            'customer_cat_pct_shoes',
+            'customer_cat_pct_skirt',
+            'customer_cat_pct_slacks',
+            'customer_cat_pct_suit',
+            'customer_cat_pct_t-shirt',
+            'customer_color_pct_b',
+            'customer_color_pct_bl',
+            'customer_color_pct_g',
+            'customer_color_pct_o',
+            'customer_color_pct_p',
+            'customer_color_pct_r',
+            'customer_color_pct_w',
+            'customer_color_pct_y',
+            'customer_autumn',
+            'customer_spring',
+            'customer_summer',
+            'customer_winter',
+            'customer_exclusive',
+            'customer_casual',
+            'customer_stylish',
+            'customer_elegant',
+            'customer_durable',
+            'customer_classic',
+            'customer_lightweight',
+            'customer_modern',
+            'customer_premium',
+            'item_id', # item id
+            'item_category_blouse', # item profile begin
+            'item_category_dress',
+            'item_category_jacket',
+            'item_category_jeans',
+            'item_category_shirt',
+            'item_category_shoes',
+            'item_category_skirt',
+            'item_category_slacks',
+            'item_category_suit',
+            'item_category_t-shirt',
+            'item_exclusive_in_title',
+            'item_casual_in_title',
+            'item_stylish_in_title',
+            'item_elegant_in_title',
+            'item_durable_in_title',
+            'item_classic_in_title',
+            'item_lightweight_in_title',
+            'item_modern_in_title',
+            'item_premium_in_title',
+            'item_img_filename_imgb.jpg',
+            'item_img_filename_imgbl.jpg',
+            'item_img_filename_imgg.jpg',
+            'item_img_filename_imgo.jpg',
+            'item_img_filename_imgp.jpg',
+            'item_img_filename_imgr.jpg',
+            'item_img_filename_imgw.jpg',
+            'item_img_filename_imgy.jpg',
+            'item_price',
+            'item_season_spring',
+            'item_season_summer',
+            'item_season_autumn',
+            'item_season_winter'
+            #'label'
+        ]]
 
     save_df(processed_df, "processed_train.csv")
     return processed_df
-
-
-def smart_train_val_split(complete_df, frac_train=0.8, random_state=42): # for customer features extraction
-    '''
-    DATA IS ASSUMED TO HAVE POSITIVES AND NEGATIVES
-
-    This custom train-test split is necessary because customer profiles need to be calculated
-    based on positive train split only to avoid data leakage. However, this approach requires each customer 
-    to contribute 80% of its purchases to the train split and the remaining 20% to validation.
-    sklearn's train_val_split implementation doesn't offer the granularity to achieve this requirement.
-    '''
-    train_parts = []
-    val_parts = []
-
-    for cust_id, group in complete_df.groupby("customer_id"):
-        if len(group) == 1:
-            # If customer has only one purchase, send to train
-            train_parts.append(group)
-            continue
-
-        train_g, val_g = train_test_split(
-            group,
-            train_size = frac_train,
-            random_state=random_state,
-            shffle=True,
-        )
-        train_parts.append(train_g)
-        val_parts.append(val_g)
-    
-    # read train data
-    # calculate negatives for train_data
-    # split 
-    #   train: 80% positives + 80% negatives per customer
-    #   val: 20% positives + 20% negatives per customer
-    # calculate customer_features on positive train
-    # merge customer_features on train & val
 
     
 def read_train_data():
@@ -491,17 +531,20 @@ def read_train_data():
 
 def read_test_data():
     test_df = read_csv("customer_purchases_test")
-    customer_feat = read_csv("customer_feat.csv")
+    customer_feat = read_csv("customer_features")
+    #test_df = pd.merge(test_df, customer_feat, on="customer_id")
 
-    # generar negativos
-    train_df_neg = gen_random_negatives(train_df, n_per_positive=2)
-    train_df_neg = train_df_neg.drop_duplicates(subset=["customer_id", "item_id"])
-    
+    # agregar features derivados del cliente al dataset
+    merged = pd.merge(test_df, customer_feat, on="customer_id", how="left")
 
-    test_df = pd.merge(test_df, customer_feat, on="customer_id")
+    # Procesamiento de datos
+    processed = preprocess(merged, training=False)
 
-    X_test = test_df
-    return X_test
+    # Si se requiere
+    dropcols = []
+    processed = processed.drop(columns=dropcols)
+
+    return df_to_numeric(processed)
 
 
 if __name__ == "__main__":
@@ -509,3 +552,39 @@ if __name__ == "__main__":
     print(train_df.info())
     test_df = read_csv("customer_purchases_test")
     print(test_df.columns)
+
+
+# def smart_train_val_split(complete_df, frac_train=0.8, random_state=42): # for customer features extraction
+#     '''
+#     DATA IS ASSUMED TO HAVE POSITIVES AND NEGATIVES
+
+#     This custom train-test split is necessary because customer profiles need to be calculated
+#     based on positive train split only to avoid data leakage. However, this approach requires each customer 
+#     to contribute 80% of its purchases to the train split and the remaining 20% to validation.
+#     sklearn's train_val_split implementation doesn't offer the granularity to achieve this requirement.
+#     '''
+#     train_parts = []
+#     val_parts = []
+
+#     for cust_id, group in complete_df.groupby("customer_id"):
+#         if len(group) == 1:
+#             # If customer has only one purchase, send to train
+#             train_parts.append(group)
+#             continue
+
+#         train_g, val_g = train_test_split(
+#             group,
+#             train_size = frac_train,
+#             random_state=random_state,
+#             shffle=True,
+#         )
+#         train_parts.append(train_g)
+#         val_parts.append(val_g)
+    
+#     # read train data
+#     # calculate negatives for train_data
+#     # split 
+#     #   train: 80% positives + 80% negatives per customer
+#     #   val: 20% positives + 20% negatives per customer
+#     # calculate customer_features on positive train
+#     # merge customer_features on train & val
