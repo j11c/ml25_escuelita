@@ -184,35 +184,9 @@ def extract_customer_features(df):  # extract customer features from label 1 non
     return customer_feat
 
 
-def merge_customer_profiles(train_df: pd.DataFrame, customer_feat: pd.DataFrame) -> pd.DataFrame:
-    """
-    Merge customer features into the main COMPLETE train DataFrame.
-    
-    Args:
-        train_df: DataFrame con todas las compras, cada fila un artículo comprado por un cliente.
-        customer_feat: DataFrame con el perfil del cliente, cada fila un cliente.
-
-    Returns:
-        DataFrame con las columnas del perfil agregadas a cada fila según customer_id.
-    """
-    # Asegurarse de que 'customer_id' sea columna y no índice
-    if 'customer_id' not in train_df.columns:
-        train_df = train_df.reset_index()
-    if 'customer_id' not in customer_feat.columns:
-        customer_feat = customer_feat.reset_index()
-
-    # Merge
-    merged_df = train_df.merge(customer_feat, on='customer_id', how='left')
-    return merged_df
-
-
 def process_df(df, training=True):
     """
-    Investiga las siguientes funciones de SKlearn y determina si te son útiles
-    - OneHotEncoder
-    - StandardScaler
-    - CountVectorizer
-    - ColumnTransformer
+    El df ya debe tener los customer_features y del item
     """
 
     adjective_vocab = [
@@ -288,15 +262,10 @@ def process_df(df, training=True):
 
 
 def preprocess(raw_df, training=False): # funcion final de preprocesamiento
-    """
-    Agrega tu procesamiento de datos, considera si necesitas guardar valores de entrenamiento.
-    Utiliza la bandera para distinguir entre preprocesamiento de entrenamiento y validación/prueba
-    """
+    if training:
+        customer_features = extract_customer_features(raw_df)
+        merged = pd.merge(test_df, customer_features, on="customer_id", how="left")
 
-    # customer features se debe calcular en base al segmento de entrenamiento
-    #customer_features = extract_customer_features(raw_df)
-
-    #merged_train_df = merge_customer_profiles(raw_df, customer_features)
     processed_df = process_df(raw_df, training)
 
     # select desired columns to keep and in desired order
@@ -377,6 +346,7 @@ def preprocess(raw_df, training=False): # funcion final de preprocesamiento
             'item_season_winter',
             'label'
         ]]
+        save_df(processed_df, "processed_train.csv")
     else:
         processed_df = processed_df[[
             'customer_id', # customer id
@@ -454,11 +424,11 @@ def preprocess(raw_df, training=False): # funcion final de preprocesamiento
             'item_season_winter'
             #'label'
         ]]
-
-    save_df(processed_df, "processed_train.csv")
+        save_df(processed_df, "processed_test.csv")
+    
     return processed_df
 
-    
+
 def read_train_data():
     train_df = read_csv("customer_purchases_train")
     customer_feat = extract_customer_features(train_df)
@@ -552,39 +522,3 @@ if __name__ == "__main__":
     print(train_df.info())
     test_df = read_csv("customer_purchases_test")
     print(test_df.columns)
-
-
-# def smart_train_val_split(complete_df, frac_train=0.8, random_state=42): # for customer features extraction
-#     '''
-#     DATA IS ASSUMED TO HAVE POSITIVES AND NEGATIVES
-
-#     This custom train-test split is necessary because customer profiles need to be calculated
-#     based on positive train split only to avoid data leakage. However, this approach requires each customer 
-#     to contribute 80% of its purchases to the train split and the remaining 20% to validation.
-#     sklearn's train_val_split implementation doesn't offer the granularity to achieve this requirement.
-#     '''
-#     train_parts = []
-#     val_parts = []
-
-#     for cust_id, group in complete_df.groupby("customer_id"):
-#         if len(group) == 1:
-#             # If customer has only one purchase, send to train
-#             train_parts.append(group)
-#             continue
-
-#         train_g, val_g = train_test_split(
-#             group,
-#             train_size = frac_train,
-#             random_state=random_state,
-#             shffle=True,
-#         )
-#         train_parts.append(train_g)
-#         val_parts.append(val_g)
-    
-#     # read train data
-#     # calculate negatives for train_data
-#     # split 
-#     #   train: 80% positives + 80% negatives per customer
-#     #   val: 20% positives + 20% negatives per customer
-#     # calculate customer_features on positive train
-#     # merge customer_features on train & val
