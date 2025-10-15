@@ -3,8 +3,8 @@ import os
 import joblib
 from pathlib import Path
 import matplotlib.pyplot as plt
-from .boilerplate.data_processing import read_test_data
-from .boilerplate.model import PurchaseModel
+from data_processing import read_test_data
+from model import PurchaseModel
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from sklearn.metrics import roc_curve, auc
 import numpy as np
@@ -18,13 +18,13 @@ RESULTS_DIR.mkdir(exist_ok=True, parents=True)
 MODELS_DIR = CURRENT_FILE.parent / "trained_models"
 
 
-def load(self, filename: str):
+def load(filename: str):
     """
     Load the model from MODELS_DIR/filename
     """
     filepath = Path(MODELS_DIR) / filename
     model = joblib.load(filepath)
-    print(f"{self.__repr__} || Model loaded from {filepath}")
+    print(f"Model loaded from {filepath}")
     return model
 
 
