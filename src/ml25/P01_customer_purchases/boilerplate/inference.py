@@ -2,6 +2,7 @@ import pandas as pd
 import os
 import joblib
 from pathlib import Path
+from datetime import datetime
 import matplotlib.pyplot as plt
 from data_processing import read_test_data
 from model import PurchaseModel
@@ -54,16 +55,18 @@ def plot_roc(y_true, y_proba):
 
 if __name__ == "__main__":
     X = read_test_data()
+
     model_name = "xgboost_model_20251014_094039.pkl"
     model = load(model_name)
     preds = model.predict(X)
 
     # Guardar las preddiciones
-
     # random preds
     #preds = np.random.choice([0, 1], size=(len(X)))
 
-    filename = "xgboost_predictions.csv"
+    model_base = os.path.splitext(model_name)[0]
+    filename = f"predictions_{model_base}.csv"
+
     basepath = RESULTS_DIR / filename
     results = pd.DataFrame({"ID": X.index, "pred": preds})  # índice original
     results.to_csv(basepath, index=False)

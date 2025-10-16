@@ -62,6 +62,11 @@ def run_training(X, y, classifier: str = "random_forest", test_size: float = 0.2
     return model, auc
 
 
+
+def run_training_all_data(X, y, classifier: str = "xgboost"):
+    pass
+
+
 if __name__ == "__main__":
     X, y = read_train_data()
 
@@ -76,5 +81,5 @@ if __name__ == "__main__":
     auc_scores = {}
 
     for classifier in classifiers:
-        trained_models[classifier], auc_scores[classifier] = run_training(X, y, classifier=classifier)
+        trained_models[classifier], auc_scores[classifier] = run_training(X, y, classifier=classifier, test_size=0.01)
         print(f"{classifier} AUC: {auc_scores[classifier]:.4f}" if auc_scores[classifier] is not None else f"{classifier} AUC: N/A")
