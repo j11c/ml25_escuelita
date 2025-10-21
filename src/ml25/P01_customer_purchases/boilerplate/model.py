@@ -31,6 +31,7 @@ class PurchaseModel:
         elif self.model_type == "logistic":
             self.model = LogisticRegression(**kwargs)
         elif self.model_type == "xgboost":
+            kwargs.pop("use_label_encoder", None)
             self.model = XGBClassifier(use_label_encoder=False, eval_metric="logloss", **kwargs)
         else:
             raise ValueError(f"Unknown model_type: {self.model_type}")

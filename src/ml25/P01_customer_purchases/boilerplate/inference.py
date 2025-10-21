@@ -56,7 +56,7 @@ def plot_roc(y_true, y_proba):
 if __name__ == "__main__":
     X = read_test_data()
 
-    model_name = "xgboost_model_20251014_094039.pkl"
+    model_name = "xgboost_model_20251015_175450.pkl"
     model = load(model_name)
     preds = model.predict(X)
 

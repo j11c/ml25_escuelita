@@ -2,6 +2,7 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, accuracy_score, roc_auc_score
+from sklearn.model_selection import GridSearchCV
 from time import time
 
 # Custom
@@ -18,7 +19,44 @@ MODEL_PARAMS = {
 }
 
 
-def run_training(X, y, classifier: str = "random_forest", test_size: float = 0.2):
+def tune_xgboost(X, y, cv=3, scoring="roc_auc"):
+    """
+    Tune XGBoost hyperparameters using your PurchaseModel wrapper.
+    """
+    param_grid = {
+        "max_depth": [4, 6, 8],
+        "min_child_weight": [1, 3, 5],
+        "gamma": [0, 0.1, 0.3],
+        "subsample": [0.7, 0.8, 1.0],
+        "colsample_bytree": [0.7, 0.8, 1.0],
+        "reg_alpha": [0, 0.1, 1],
+        "reg_lambda": [1, 1.5, 2]
+    }
+
+    model_wrapper = PurchaseModel(
+        model_type="xgboost", 
+        n_estimators=300, # n_estimators y learning_rate se tunean en conjunto, los mantendremos constantes por ahora para los experimentos.
+        learning_rate=0.1
+    ) 
+
+    grid = GridSearchCV(
+        estimator=model_wrapper.model,
+        param_grid=param_grid,
+        cv=cv,
+        scoring=scoring,
+        n_jobs=-1,
+        verbose=1
+    )
+
+    grid.fit(X, y)
+
+    print("Best parameters found:", grid.best_params_)
+    print("Best CV score:", grid.best_score_)
+
+    return grid.best_params_
+
+
+def run_training(X, y, classifier: str = "random_forest", test_size: float = 0.2, tune: bool = False):
     # ---- Logger setup -----
     logger = setup_logger(f"training_{classifier}")
     logger.info("Starting training for classifier: {classifier}")
@@ -29,6 +67,14 @@ def run_training(X, y, classifier: str = "random_forest", test_size: float = 0.2
 
     # 2.Entrenamiento del modelo
     params = MODEL_PARAMS.get(classifier, {})
+
+    # Tuning de Hyperparametros
+    if classifier == "xgboost" and tune:
+        logger.info("Tuning XGBoost hyperparameters...")
+        best_params = tune_xgboost(X_train, y_train)
+        params.update(best_params)
+        logger.info(f"Best hyperparameters after tuning: {best_params}")
+
     model = PurchaseModel(model_type=classifier, **params)
     logger.info(f"Model initialized: {model}")
     logger.info(f"Hyperparameters: {model.get_config()}")
@@ -62,7 +108,6 @@ def run_training(X, y, classifier: str = "random_forest", test_size: float = 0.2
     return model, auc
 
 
-
 def run_training_all_data(X, y, classifier: str = "xgboost"):
     pass
 
@@ -71,15 +116,15 @@ if __name__ == "__main__":
     X, y = read_train_data()
 
     classifiers = [
-        "svm", 
-        "random_forest", 
-        "logistic", 
+        # "svm", 
+        # "random_forest", 
+        # "logistic", 
         "xgboost"
     ]
     
     trained_models = {}
     auc_scores = {}
-
+    
     for classifier in classifiers:
-        trained_models[classifier], auc_scores[classifier] = run_training(X, y, classifier=classifier, test_size=0.01)
+        trained_models[classifier], auc_scores[classifier] = run_training(X, y, classifier=classifier, test_size=0.2, tune=True)
         print(f"{classifier} AUC: {auc_scores[classifier]:.4f}" if auc_scores[classifier] is not None else f"{classifier} AUC: N/A")
