@@ -18,14 +18,15 @@ dependencies = [
     "ipympl",
     "notebook",
     "scipy",
-    "gymnasium>=0.26.3",
+    "swig",
+    "Box2D",
+    "gymnasium",
     "gymnasium[classic_control]",
     "scikit-fuzzy",
 ]
 
 [tool.setuptools]
-package-dir = {"" = "src"}
+package-dir = { "" = "src" }
 
 [tool.setuptools.packages.find]
 where = ["src"]
-

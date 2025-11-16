@@ -223,3 +223,6 @@ __marimo__/
 *.tar.gz
 **/datasets
 uv.lock
+wandb/
+*desktop.ini
+**/models_carracing/
