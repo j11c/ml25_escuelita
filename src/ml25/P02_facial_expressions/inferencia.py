@@ -15,7 +15,7 @@ import pathlib
 file_path = pathlib.Path(__file__).parent.absolute()
 
 # Configuracion
-MODEL_NAME = "best_model.pth"
+MODEL_NAME = "best_model_2025-11-17_06-25-07-652772.pth"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
@@ -86,7 +86,7 @@ def predict(img_title_paths):
     modelo.to(DEVICE)
     modelo.eval() # Importante para desactivar Dropout
 
-    for path in img_paths:
+    for path in img_title_paths:
         full_path = (file_path / path).as_posix()
         print(f"Procesando: {full_path}")
 
@@ -156,6 +156,10 @@ def predict(img_title_paths):
 if __name__ == "__main__":
     # Direcciones relativas a este archivo
     img_paths = [
-        "./test_imgs/happy.png"
+        "./test_imgs/happy.png",
+        "./test_imgs/sad.jpg",
+        "./test_imgs/angry.jpg",
+        "./test_imgs/joshua_surprised.jpg",
+        "./test_imgs/joshua_sad.jpg"
     ]
     predict(img_paths)

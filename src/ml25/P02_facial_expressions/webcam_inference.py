@@ -8,7 +8,7 @@ import time
 from dataset import EMOTIONS_MAP
 
 # --- CONFIGURACIÓN ---
-MODEL_PATH = pathlib.Path(__file__).parent / "models" / "best_model.pth"
+MODEL_PATH = pathlib.Path(__file__).parent / "models" / "best_model_2025-11-17_06-25-07-652772.pth"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 def load_trained_model():
