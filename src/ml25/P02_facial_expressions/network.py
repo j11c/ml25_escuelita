@@ -32,13 +32,13 @@ def build_backbone(model="resnet18", pretrained=True, freeze=True, last_n_layers
 
 
 class Network(nn.Module):
-    def __init__(self, input_dim: int, n_classes: int) -> None:
+    def __init__(self, input_dim: int, n_classes: int, pretrained: bool = True, freeze: bool = True) -> None:
         super().__init__()
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         # TODO: Calcular dimension de salida
         # out_dim = ...
-        self.backbone, out_dim = build_backbone(pretrained=True, freeze=True)
+        self.backbone, out_dim = build_backbone(pretrained=pretrained, freeze=freeze)
 
         # TODO: Define las capas de tu red
         self.head = nn.Sequential(

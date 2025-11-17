@@ -15,7 +15,7 @@ import pathlib
 file_path = pathlib.Path(__file__).parent.absolute()
 
 # Configuracion
-MODEL_NAME = "best_model_2025-11-17_06-25-07-652772.pth"
+MODEL_NAME = "best_model_2025-11-17_17-05-11-647454.pth"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 

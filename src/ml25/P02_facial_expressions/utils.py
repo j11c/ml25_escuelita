@@ -6,6 +6,7 @@ import cv2
 import torch
 import torch.nn as nn
 import torchvision
+import torchvision.transforms as T
 
 file_path = pathlib.Path(__file__).parent.absolute()
 
@@ -18,26 +19,44 @@ def get_transforms(split, img_size):
     # Agrega algún tipo de data agumentation para el conjunto de entrenamiento
     # https://pytorch.org/vision/stable/transforms.html
     common = [
-        torchvision.transforms.ToTensor(),
-        torchvision.transforms.Grayscale(),
-        torchvision.transforms.Resize((img_size, img_size)),
+        #torchvision.transforms.ToTensor(),
+        T.ToPILImage(),
+        T.Grayscale(num_output_channels=1),
+        T.Resize((img_size, img_size)),
     ]
 
     mean, std = 0.5, 0.5
     if split == "train":
-        transforms = torchvision.transforms.Compose(
+        train_transforms = [
+            T.RandomHorizontalFlip(p=0.5),
+            T.RandomRotation(degrees=10),
+            T.RandomAffine(
+                degrees=0,
+                translate=(0.1, 0.1),
+                scale=(0.9, 1.1)
+            ),
+            T.ColorJitter(
+                brightness=0.5, 
+                contrast=0.4,
+                saturation=0,
+                hue=0
+            ),
+        ]
+
+        transforms = T.Compose(
             [
                 *common,
-                torchvision.transforms.ColorJitter(
-                    brightness=0.5, contrast=0.4, saturation=0, hue=0
-                ),
-                torchvision.transforms.Normalize((mean,), (std,)),
+                *train_transforms,
+                T.ToTensor(),
+                T.Normalize((mean,), (std,)),
             ]
         )
     else:
-        transforms = torchvision.transforms.Compose(
-            [*common, torchvision.transforms.Normalize((mean,), (std,))]
-        )
+        transforms = T.Compose([
+            *common, 
+            T.ToTensor(),
+            T.Normalize((mean,), (std,))
+        ])
 
     # For visualization
     deNormalize = UnNormalize(mean=[mean], std=[std])
