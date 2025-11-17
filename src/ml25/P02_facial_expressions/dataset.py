@@ -47,6 +47,7 @@ def get_loader(split, batch_size, shuffle=True, num_workers=0):
         batch_size=batch_size,
         shuffle=shuffle,
         num_workers=num_workers,
+        pin_memory=True
     )
     return dataset, dataloader
 

@@ -57,7 +57,7 @@ class Network(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # TODO: Define la propagacion hacia adelante de tu red
-        if x.shape[0] == 1:
+        if x.shape[1] == 1:
             x = x.repeat(1, 3, 1, 1)
         
         features = self.backbone(x)
