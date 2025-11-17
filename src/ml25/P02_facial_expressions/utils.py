@@ -137,3 +137,7 @@ def create_train_val_split():
     outfile = file_path / "data/split.json"
     with open(outfile, "w") as f:
         json.dump(sample_dct, f, indent=2)
+
+
+if __name__ == "__main__":
+    create_train_val_split()

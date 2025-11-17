@@ -9,8 +9,8 @@ import torch.optim as optim
 import torch
 import torch.nn as nn
 from tqdm import tqdm
-from ml_clases.proyectos.P02_facial_expressions.dataset import get_loader
-from ml_clases.proyectos.P02_facial_expressions.network import Network
+from dataset import get_loader
+from network import Network
 
 # Logging
 import wandb

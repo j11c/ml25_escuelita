@@ -8,8 +8,8 @@ import torch.optim as optim
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OrdinalEncoder
 from pathlib import Path
-from ml25.ejemplo_wandb.dataset import HousingDataset
-from ml25.ejemplo_wandb.model import Net
+from dataset import HousingDataset
+from model import Net
 
 # conda activate mlenv
 # pip install wandb

@@ -2,14 +2,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import cv2
-from ml_clases.proyectos.P02_facial_expressions.network import Network
+from network import Network
 import torch
-from ml_clases.proyectos.P02_facial_expressions.utils import (
+from utils import (
     to_numpy,
     get_transforms,
     add_img_text,
 )
-from ml_clases.proyectos.P02_facial_expressions.dataset import EMOTIONS_MAP
+from dataset import EMOTIONS_MAP
 import pathlib
 
 file_path = pathlib.Path(__file__).parent.absolute()
