@@ -140,7 +140,7 @@ def train(
             print(f"ALERTA: No se encontró modelo base: {base_model_path}. Iniciando desde cero.")
 
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.1) # label smoothing test con resize 112 para exprimir acc
     optimizer = optim.Adam(modelo.parameters(), lr=learning_rate, weight_decay=1e-4)
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
 
@@ -226,9 +226,9 @@ def train(
 if __name__ == "__main__":    
     train(
         n_epochs=100, 
-        learning_rate=1e-5,
+        learning_rate=1e-4,
         batch_size=256, 
         freeze_backbone=False,
         pretrained=True,
-        base_model_path="best_model_2025-11-17_16-35-31-137208.pth"
+        base_model_path=None #"best_model_2025-11-17_18-24-11-228999.pth" #"best_model_2025-11-17_16-35-31-137208.pth"
     )

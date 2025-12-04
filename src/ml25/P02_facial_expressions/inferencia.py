@@ -15,7 +15,7 @@ import pathlib
 file_path = pathlib.Path(__file__).parent.absolute()
 
 # Configuracion
-MODEL_NAME = "best_model_2025-11-17_17-05-11-647454.pth"
+MODEL_NAME = "best_model_2025-11-17_16-35-31-137208.pth"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 
@@ -156,10 +156,23 @@ def predict(img_title_paths):
 if __name__ == "__main__":
     # Direcciones relativas a este archivo
     img_paths = [
+        "./test_imgs/gus1.jpg",
+        "./test_imgs/gusgus.jpg",
+        "./test_imgs/gusgusgus.jpg",
+        "./test_imgs/kevin.jpg",
+        "./test_imgs/kevinkevin.jpg",
+        "./test_imgs/kevinkevinkevin.jpg",
+        "./test_imgs/sad_emoji.jpg",
+        "./test_imgs/sad_face_draw.jpg",
+        "./test_imgs/happyface.jpg",
+        "./test_imgs/happy2.jpg",
+        "./test_imgs/hehehe.jpg",
+        "./test_imgs/surprised2.png",
         "./test_imgs/happy.png",
         "./test_imgs/sad.jpg",
         "./test_imgs/angry.jpg",
         "./test_imgs/joshua_surprised.jpg",
-        "./test_imgs/joshua_sad.jpg"
+        "./test_imgs/joshua_sad.jpg",
+        "./test_imgs/surprised.jpg",
     ]
     predict(img_paths)

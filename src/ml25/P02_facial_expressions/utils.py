@@ -18,6 +18,9 @@ def get_transforms(split, img_size):
     # TODO: Define las trasnformaciones para el conjunto de entrenamiento y validacion
     # Agrega algún tipo de data agumentation para el conjunto de entrenamiento
     # https://pytorch.org/vision/stable/transforms.html
+
+    # target_size = 112 # test resize para exprimir accuracy
+
     common = [
         #torchvision.transforms.ToTensor(),
         T.ToPILImage(),
@@ -26,6 +29,8 @@ def get_transforms(split, img_size):
     ]
 
     mean, std = 0.5, 0.5
+    
+
     if split == "train":
         train_transforms = [
             T.RandomHorizontalFlip(p=0.5),
